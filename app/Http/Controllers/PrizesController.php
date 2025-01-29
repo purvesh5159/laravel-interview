@@ -108,7 +108,7 @@ class PrizesController extends Controller
 
     public function reset()
     {
-        // TODO : Write logic here
+        Prize::query()->update(['awarded_count' => 0]);
         return to_route('prizes.index');
     }
 }

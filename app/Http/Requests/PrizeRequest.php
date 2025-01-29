@@ -24,10 +24,30 @@ class PrizeRequest extends FormRequest
      */
     public function rules()
     {
-        return
-            [
-                'title' => 'required',
-                'probability' => 'required|numeric|min:0|max:100',
-            ];
+        $currentPrize = Prize::find($this->route('prize'));
+        $currentTotal = Prize::sum('probability');
+        
+        if ($currentPrize) {
+            $currentTotal -= $currentPrize->probability;
+        }
+        
+        $maxAllowed = 100 - $currentTotal;
+        
+        return [
+            'title' => 'required|string|max:255',
+            'probability' => [
+                'required',
+                'numeric',
+                'min:0',
+                'max:' . $maxAllowed,
+            ]
+        ];
+    }
+    
+    public function messages()
+    {
+        return [
+            'probability.max' => 'The total probability cannot exceed 100%. Maximum allowed is :max%'
+        ];
     }
 }

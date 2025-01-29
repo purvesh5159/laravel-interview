@@ -1,10 +1,7 @@
 @extends('default')
 
 @section('content')
-
-
     @include('prob-notice')
-
 
     <div class="container">
         <div class="row">
@@ -18,8 +15,9 @@
                         <tr>
                             <th>Id</th>
                             <th>Title</th>
-                            <th>Probability</th>
-                            <th>Awarded</th>
+                            <th>Set Probability</th>
+                            <th>Actual Probability</th>
+                            <th>Awarded Count</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -29,7 +27,8 @@
                                 <td>{{ $prize->id }}</td>
                                 <td>{{ $prize->title }}</td>
                                 <td>{{ $prize->probability }}</td>
-                                <td>0</td>
+                                <td>{{ number_format($prize->actual_probability, 2) }}%</td>
+                                <td>{{ $prize->awarded_count }}</td>
                                 <td>
                                     <div class="d-flex gap-2">
                                         <a href="{{ route('prizes.edit', [$prize->id]) }}" class="btn btn-primary">Edit</a>
@@ -68,35 +67,154 @@
                         {!! Form::submit('Reset', ['class' => 'btn btn-primary']) !!}
                         {!! Form::close() !!}
                     </div>
-
                 </div>
             </div>
         </div>
     </div>
 
-
-
-    <div class="container  mb-4">
+    <div class="container mb-4">
         <div class="row">
             <div class="col-md-6">
-                <h2>Probability Settings</h2>
-                <canvas id="probabilityChart"></canvas>
+                <div class="card">
+                    <div class="card-body">
+                        <h2>Probability Settings</h2>
+                        <div style="height: 400px;">
+                            <canvas id="probabilityChart"></canvas>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="col-md-6">
-                <h2>Actual Rewards</h2>
-                <canvas id="awardedChart"></canvas>
+                <div class="card">
+                    <div class="card-body">
+                        <h2>Actual Rewards</h2>
+                        <div style="height: 400px;">
+                            <canvas id="awardedChart"></canvas>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-
-
 @stop
-
 
 @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Define a color palette for the charts
+        const colors = [
+            'rgba(255, 99, 132, 0.8)',   // Pink
+            'rgba(54, 162, 235, 0.8)',   // Blue
+            'rgba(255, 206, 86, 0.8)',   // Yellow
+            'rgba(75, 192, 192, 0.8)',   // Teal
+            'rgba(153, 102, 255, 0.8)',  // Purple
+            'rgba(255, 159, 64, 0.8)',   // Orange
+            'rgba(46, 204, 113, 0.8)',   // Green
+            'rgba(142, 68, 173, 0.8)',   // Deep Purple
+            'rgba(241, 196, 15, 0.8)',   // Golden
+            'rgba(231, 76, 60, 0.8)'     // Red
+        ];
 
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+        // Common chart options
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '60%',  // This creates the donut hole
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true,
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.parsed;
+                            return `${context.label}: ${value.toFixed(2)}%`;
+                        }
+                    }
+                },
+                datalabels: {
+                    color: '#fff',
+                    font: {
+                        weight: 'bold',
+                        size: 12
+                    },
+                    formatter: (value) => {
+                        if (value < 5) return '';  // Don't show labels for small segments
+                        return value.toFixed(1) + '%';
+                    }
+                }
+            }
+        };
 
+        // Probability Settings Chart
+        const probabilityCtx = document.getElementById('probabilityChart');
+        new Chart(probabilityCtx, {
+            type: 'doughnut',  // Changed from 'pie' to 'doughnut'
+            data: {
+                labels: {!! json_encode($prizes->pluck('title')) !!},
+                datasets: [{
+                    data: {!! json_encode($prizes->pluck('probability')) !!},
+                    backgroundColor: colors.slice(0, {!! json_encode($prizes->count()) !!}),
+                    borderColor: colors.map(color => color.replace('0.8', '1')),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                ...commonOptions,
+                plugins: {
+                    ...commonOptions.plugins,
+                    title: {
+                        display: true,
+                        text: 'Configured Prize Probabilities',
+                        font: {
+                            size: 16,
+                            weight: 'bold'
+                        },
+                        padding: {
+                            bottom: 20
+                        }
+                    }
+                }
+            }
+        });
 
+        // Actual Rewards Chart
+        const awardedCtx = document.getElementById('awardedChart');
+        new Chart(awardedCtx, {
+            type: 'doughnut',  // Changed from 'pie' to 'doughnut'
+            data: {
+                labels: {!! json_encode($prizes->pluck('title')) !!},
+                datasets: [{
+                    data: {!! json_encode($prizes->pluck('actual_probability')) !!},
+                    backgroundColor: colors.slice(0, {!! json_encode($prizes->count()) !!}),
+                    borderColor: colors.map(color => color.replace('0.8', '1')),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                ...commonOptions,
+                plugins: {
+                    ...commonOptions.plugins,
+                    title: {
+                        display: true,
+                        text: 'Actual Prize Distribution',
+                        font: {
+                            size: 16,
+                            weight: 'bold'
+                        },
+                        padding: {
+                            bottom: 20
+                        }
+                    }
+                }
+            }
+        });
+    </script>
 @endpush
